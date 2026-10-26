@@ -512,3 +512,82 @@ Las pruebas están en:
 
 > En conclusión, el proyecto integra frontend, backend y base de datos. React y Vite manejan la interfaz, Axios comunica el frontend con la API, Express organiza las rutas, middlewares y controladores, y PostgreSQL almacena y protege la información. El resultado es un CRUD persistente con endpoints RESTful, validaciones en varias capas y una aplicación lista para demostración.
 
+---
+
+## 14. Respuestas cortas para memorizar
+
+### ¿Dónde está creada la API?
+
+> La API está creada en el backend con Node.js y Express. La configuración principal está en `backend/src/app.js` y el servidor se inicia desde `backend/src/server.js`, normalmente en `http://localhost:3000`.
+
+### ¿Dónde están los endpoints?
+
+> Los endpoints de repuestos están en `backend/src/routes/repuestos.routes.js` y los de solicitudes en `backend/src/routes/solicitudes.routes.js`. Allí se definen los métodos GET, POST, PUT y DELETE.
+
+### ¿Dónde está la conexión a PostgreSQL?
+
+> Está en `backend/src/config/database.js`. Allí se importa `pg`, se crea un `Pool` de conexiones y se leen las variables de entorno del archivo `backend/.env`.
+
+### ¿Dónde se utiliza esa conexión?
+
+> Los modelos `backend/src/models/repuestos.model.js` y `backend/src/models/solicitudes.model.js` importan el `pool` y ejecutan consultas con `pool.query()`.
+
+### ¿Dónde está implementado Axios?
+
+> Axios está implementado en `frontend/src/services/api.js`, donde se crea la instancia con `baseURL: "/api"`. Las peticiones de repuestos están en `frontend/src/services/repuestosApi.js` y las de solicitudes en `frontend/src/services/solicitudesApi.js`.
+
+### ¿Cómo llega Axios al backend?
+
+> Axios usa rutas como `/api/repuestos`. El proxy de `frontend/vite.config.js` reenvía esas peticiones hacia `http://localhost:3000`, donde las recibe Express.
+
+### ¿Dónde están los middlewares?
+
+> Están en `backend/src/middlewares/`. `validarId` valida identificadores, `validarRepuesto` valida los datos del CRUD, `validarSolicitud` valida solicitudes, `notFound` maneja rutas inexistentes y `errorHandler` centraliza los errores.
+
+### ¿Qué hace un middleware?
+
+> Un middleware se ejecuta durante el procesamiento de una petición. Puede validar datos, modificar `req`, responder con un error o llamar a `next()` para continuar hacia el controlador.
+
+### ¿Dónde están las validaciones que no son middlewares?
+
+> En el frontend están principalmente en `frontend/src/utils/inventario.js`, mediante `validarRepuesto`, `validarSolicitud` y `catalogoValido`. También se controla el envío en `ProductoForm.jsx` y `Formulario.jsx`. En el backend, los controladores validan reglas de negocio, como comprobar que exista un repuesto y evitar que cambie su código. PostgreSQL aplica las restricciones definitivas en `database/schema.sql`.
+
+### ¿Dónde están los controladores?
+
+> Están en `backend/src/controllers/`. `repuestos.controller.js` contiene `listar`, `obtener`, `crear`, `actualizar` y `eliminar`. `solicitudes.controller.js` contiene las funciones para listar y crear solicitudes.
+
+### ¿Qué hace un controlador?
+
+> Recibe la petición después de los middlewares, llama al modelo que ejecuta el SQL y devuelve una respuesta JSON con el código HTTP correspondiente. Si ocurre un error, usa `next(err)` para enviarlo a `errorHandler`.
+
+### ¿Cuál es la diferencia entre ruta, middleware, controlador y modelo?
+
+> La ruta define el método y la URL; el middleware valida o prepara la petición; el controlador coordina la operación y la respuesta; y el modelo ejecuta las consultas contra PostgreSQL.
+
+### ¿Por qué hay validaciones en varias capas?
+
+> La validación del frontend mejora la experiencia del usuario, el backend protege la API aunque alguien evite el formulario y PostgreSQL garantiza la integridad definitiva de los datos.
+
+### ¿Por qué React no se conecta directamente a PostgreSQL?
+
+> Porque el navegador no debe conocer las credenciales de la base de datos. Express funciona como intermediario entre React y PostgreSQL.
+
+### ¿Cómo se evita SQL Injection?
+
+> Las consultas usan parámetros como `$1`, `$2` y no concatenan directamente los datos del usuario dentro del SQL.
+
+### ¿Por qué el código no se puede modificar?
+
+> En el frontend el campo queda deshabilitado al editar; el controlador compara el código recibido con el almacenado; y el `UPDATE` del modelo no incluye la columna `codigo`.
+
+### ¿Qué ocurre si se repite un código?
+
+> PostgreSQL genera el error `23505`. `errorHandler.js` lo convierte en una respuesta `409 Conflict` con el mensaje de código duplicado.
+
+### ¿Qué significan los códigos HTTP principales?
+
+> `200` indica una operación exitosa, `201` que se creó un recurso, `400` que los datos son inválidos, `404` que no existe la ruta o el registro, `409` que hay un conflicto y `500` que ocurrió un error interno.
+
+### ¿Las solicitudes envían correos?
+
+> No. Este prototipo académico guarda las solicitudes en PostgreSQL, pero no envía correos ni crea pedidos reales.
