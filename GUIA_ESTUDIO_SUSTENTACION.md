@@ -140,8 +140,17 @@ Archivo base: `frontend/src/services/api.js`
 ```javascript
 export const api = axios.create({
   baseURL: "/api",
+  timeout: 8000,
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
 });
 ```
+
+La configuración también incluye `mensajeErrorApi`, que convierte errores de red,
+timeout y respuestas HTTP en mensajes claros. `leerDato` comprueba que la
+respuesta del servidor tenga la forma esperada antes de entregarla a React.
 
 Los servicios están en:
 
@@ -186,12 +195,16 @@ Archivo: `backend/src/app.js`
 Aquí se configura:
 
 - `cors()`: permite solicitudes desde el frontend.
-- `express.json()`: permite recibir cuerpos JSON.
+- `express.json({ limit: "100kb" })`: permite recibir JSON con un límite de tamaño.
 - Rutas de repuestos.
 - Rutas de solicitudes.
 - Endpoint `/api/health`.
 - Middleware para rutas inexistentes.
 - Middleware general de errores.
+
+`GET /api/health` responde `200` cuando Express y PostgreSQL están conectados.
+Si la base no está disponible, responde `503 Service Unavailable` sin revelar
+detalles internos de la conexión.
 
 ### Arranque del servidor
 
@@ -212,6 +225,7 @@ Archivo de rutas: `backend/src/routes/repuestos.routes.js`
 | POST | `/api/repuestos` | Crea un repuesto | `201` |
 | PUT | `/api/repuestos/:id` | Actualiza un repuesto | `200` |
 | DELETE | `/api/repuestos/:id` | Elimina un repuesto | `200` |
+| GET | `/api/health` | Comprueba API y PostgreSQL | `200` o `503` |
 
 Solicitudes:
 
@@ -276,12 +290,17 @@ Comprueba que el ID sea un entero positivo. Rechaza:
 Valida:
 
 - Código de mínimo 3 caracteres.
+- Código de máximo 40 caracteres.
 - Nombre de mínimo 3 caracteres.
+- Nombre de máximo 120 caracteres.
 - Categoría obligatoria.
+- Categoría de máximo 80 caracteres.
 - Marca obligatoria.
+- Marca de máximo 80 caracteres.
 - Precio numérico y mayor o igual a cero.
+- Precio con máximo dos decimales y dentro del rango de PostgreSQL.
 - Stock entero y mayor o igual a cero.
-- Al menos un modelo compatible.
+- Al menos un modelo compatible, máximo 20 modelos y 80 caracteres por modelo.
 
 También normaliza el código:
 
@@ -312,6 +331,8 @@ Convierte errores técnicos en respuestas HTTP:
 | `23505` | Código duplicado | `409` |
 | `23514` | No se cumple un `CHECK` | `400` |
 | `23502` | Campo obligatorio ausente | `400` |
+| `22001`, `22003` | Texto demasiado largo o número fuera de rango | `400` |
+| Error de conexión | PostgreSQL no disponible | `503` |
 | Otros | Error no controlado | `500` |
 
 Respuesta para explicar:
@@ -586,8 +607,143 @@ Las pruebas están en:
 
 ### ¿Qué significan los códigos HTTP principales?
 
-> `200` indica una operación exitosa, `201` que se creó un recurso, `400` que los datos son inválidos, `404` que no existe la ruta o el registro, `409` que hay un conflicto y `500` que ocurrió un error interno.
+> `200` indica una operación exitosa, `201` que se creó un recurso, `400` que los datos son inválidos, `404` que no existe la ruta o el registro, `409` que hay un conflicto, `503` que PostgreSQL no está disponible y `500` que ocurrió un error interno.
 
 ### ¿Las solicitudes envían correos?
 
 > No. Este prototipo académico guarda las solicitudes en PostgreSQL, pero no envía correos ni crea pedidos reales.
+
+---
+
+## 15. Actualización de la última versión
+
+La versión nueva conserva la arquitectura principal:
+
+```text
+React + Vite → Axios → Express → controladores → modelos SQL → PostgreSQL
+```
+
+Pero incorpora mejoras importantes para la demostración y la sustentación.
+
+### Backend reforzado
+
+Archivos relacionados:
+
+- `backend/src/app.js`
+- `backend/src/middlewares/validarRepuesto.js`
+- `backend/src/middlewares/validarSolicitud.js`
+- `backend/src/middlewares/errorHandler.js`
+
+Cambios:
+
+- `express.json` limita el cuerpo recibido a `100kb`.
+- `GET /api/health` informa si la API y PostgreSQL están conectados.
+- Una base caída responde `503`, no `500`.
+- Se controlan errores de conexión como `ECONNREFUSED`, `ETIMEDOUT` y otros.
+- Se controlan textos demasiado largos (`22001`) y números fuera de rango (`22003`).
+- Los textos ahora respetan los tamaños máximos de las columnas.
+- El precio acepta máximo dos decimales.
+- El stock respeta el rango de un entero de PostgreSQL.
+- La compatibilidad permite hasta 20 modelos de máximo 80 caracteres cada uno.
+
+### Axios más seguro y claro
+
+Archivo: `frontend/src/services/api.js`
+
+La instancia ahora incluye:
+
+- `baseURL: "/api"`.
+- Timeout de 8 segundos.
+- Cabeceras JSON.
+- `mensajeErrorApi` para mostrar mensajes según el tipo de error.
+- `leerDato` para verificar que las respuestas sean listas u objetos válidos.
+
+Los servicios que utilizan estas funciones están en:
+
+- `frontend/src/services/repuestosApi.js`
+- `frontend/src/services/solicitudesApi.js`
+
+### Mejoras de los hooks
+
+Archivos:
+
+- `frontend/src/hooks/useCatalogo.js`
+- `frontend/src/hooks/useSolicitudes.js`
+
+Los hooks ahora centralizan los mensajes de error mediante `mensajeErrorApi`.
+Además, `useSolicitudes` tiene el estado `enviando` para evitar dobles envíos
+cuando se registra una solicitud.
+
+### Mejoras visuales
+
+Se agregó la dependencia `lucide-react` en `frontend/package.json`.
+
+Se utiliza en:
+
+- `frontend/src/components/productos/ProductosTable.jsx`: estados de stock,
+  editar y eliminar.
+- `frontend/src/components/Toast.jsx`: iconos de éxito, advertencia y error.
+- `frontend/src/pages/Productos.jsx`: aviso de error y estado vacío.
+
+También se deshabilitan botones durante las operaciones:
+
+- `Guardando…`
+- `Eliminando…`
+- `Registrando…`
+
+Esto evita solicitudes duplicadas y hace visible el estado del sistema.
+
+### Pruebas actualizadas
+
+La versión nueva tiene:
+
+- 9 pruebas frontend exitosas.
+- 8 pruebas backend exitosas.
+- Build de Vite exitoso.
+
+Se añadieron pruebas para longitudes máximas, precios con más de dos decimales,
+notación científica, errores de PostgreSQL y conexión caída.
+
+### Postman
+
+La colección está en:
+
+`postman/Repuestos-Perez.postman_collection.json`
+
+También existe la estructura de carpetas en:
+
+`postman/collections/Repuestos Perez/`
+
+Incluye:
+
+- `Salud`: `GET /api/health`.
+- `CRUD`: GET, POST, PUT y DELETE.
+- `Errores`: respuestas 400, 404 y 409.
+- `Solicitudes`: GET y POST.
+
+El entorno local está en:
+
+`postman/environments/Local.environment.yaml`
+
+La variable `baseUrl` vale:
+
+```text
+http://localhost:3000
+```
+
+Para demostrar el CRUD en Postman:
+
+1. Ejecuta `POST crear repuesto`.
+2. La colección guarda automáticamente el `id`.
+3. Ejecuta el `PUT actualizar repuesto`.
+4. Ejecuta el `DELETE eliminar repuesto`.
+
+### Documentación nueva
+
+La versión nueva también agrega:
+
+- `docs/AUDITORIA_REQUISITOS.md`: revisión requisito por requisito.
+- `docs/GUIA_SUSTENTACION.md`: guía técnica enfocada en la entrega.
+
+Tu guía actual sigue siendo la referencia principal para estudiar, porque reúne
+las explicaciones y respuestas cortas de esta sustentación.
