@@ -1,0 +1,30 @@
+Repuestos Pérez — justificación breve
+Equipo: Daniel Bermúdez Pérez, Sheril Daniela Silva Garcia, Juan Camilo Cabrera Roa
+Tecnológico de Antioquia · Construcción de software 3
+
+Qué es
+Aplicación para consultar y actualizar el inventario de repuestos para motocarros en Remedios, Antioquia.
+La interfaz es React. Los datos del catálogo están en PostgreSQL y llegan por una API hecha con Express.
+
+Infraestructura
+Node.js. Instala y ejecuta el frontend y el backend. Hace falta la versión 22 o superior.
+Vite. Sirve la interfaz en desarrollo y reenvía /api hacia el puerto 3000.
+React. Dibuja menú, páginas, tarjetas, tabla y formularios.
+React Router. Cambia de Inicio, Proyecto, Catálogo y Solicitud sin recargar otro HTML.
+Axios. Envía las peticiones a /api. Los componentes no llaman al servidor directo: lo hace un hook.
+Express. Recibe GET, POST, PUT y DELETE, valida y llama al controlador.
+PostgreSQL. Guarda repuestos y solicitudes. El código es único, el precio y el stock no pueden ser negativos.
+
+Partes de la página
+Menú. Lleva a las cuatro pantallas. En el celular se cierra con Escape.
+Inicio. Presenta la tienda y un saludo con el nombre.
+Sobre el proyecto. Explica el problema, el público y la solución.
+Catálogo. Indicadores, filtros, alta, edición y eliminación. El código no se cambia al editar.
+Solicitud. Pide nombre, correo, teléfono opcional, repuesto y detalle, y los guarda en la base.
+Pie. Tienda, institución e integrantes.
+
+Cómo abrirla
+Iniciar PostgreSQL, crear la base con database/schema.sql y database/seed.sql, copiar backend/.env.example a backend/.env.
+En backend: npm install y npm start.
+En frontend: npm install y npm run dev.
+Abrir la dirección de Vite. El detalle está en el README.
